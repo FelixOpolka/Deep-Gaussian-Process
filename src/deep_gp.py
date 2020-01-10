@@ -1,5 +1,6 @@
 import gpflow
 import tensorflow as tf
+from gpflow.base import Module
 from gpflow.mean_functions import Zero
 from gpflow.models.model import GPModel, MeanAndVariance
 
@@ -7,9 +8,10 @@ from layer_initializations import init_layers_linear
 from utils import BroadcastingLikelihood
 
 
-class DeepGPBase(GPModel):
+class DeepGPBase(Module):
 
     def __init__(self, likelihood, layers, num_samples=1, **kwargs):
+        super().__init__(name="DeepGPBase")
         self.num_samples = num_samples
         self.likelihood = BroadcastingLikelihood(likelihood)
         self.layers = layers
@@ -27,24 +29,23 @@ class DeepGPBase(GPModel):
             Fvars.append(Fvar)
         return Fs, Fmeans, Fvars
 
-    def predict_f(self, predict_at, full_cov=False,
-                  full_output_cov=False) -> MeanAndVariance:
+    def predict_f(self, predict_at, num_samples, full_cov=False) -> MeanAndVariance:
         Fs, Fmeans, Fvars = self.propagate(predict_at, full_cov=full_cov,
-                                           num_samples=self.num_samples)
+                                           num_samples=num_samples)
         return Fmeans[-1], Fvars[-1]
 
-    def predict_all_layers(self, predict_at, num_samples, full_cov=False,
-                           full_output_cov=False):
+    def predict_all_layers(self, predict_at, num_samples, full_cov=False):
         return self.propagate(predict_at, full_cov=full_cov,
                               num_samples=num_samples)
 
-    def predict_y(self, predict_at, full_cov=False,
-                  full_output_cov=False):
-        Fmean, Fvar = self.predict_f(predict_at, full_cov, full_output_cov)
+    def predict_y(self, predict_at, num_samples):
+        Fmean, Fvar = self.predict_f(predict_at, num_samples=num_samples,
+                                     full_cov=False)
         return self.likelihood.predict_mean_and_var(Fmean, Fvar)
 
-    def predict_log_density(self, data, full_cov=False, full_output_cov=False):
-        Fmean, Fvar = self.predict_f(data[0], full_cov)
+    def predict_log_density(self, data, num_samples):
+        Fmean, Fvar = self.predict_f(data[0], num_samples=num_samples,
+                                     full_cov=False)
         l = self.likelihood.predict_density(Fmean, Fvar, data[1])
         log_num_samples = tf.math.log(tf.cast(self.num_samples, gpflow.base.default_float()))
         return tf.reduce_logsumexp(l - log_num_samples, axis=0)
@@ -54,7 +55,8 @@ class DeepGPBase(GPModel):
         Compute expectations of the data log likelihood under the variational
         distribution with MC samples
         """
-        F_mean, F_var = self.predict_f(X, full_cov=False)
+        F_mean, F_var = self.predict_f(X, num_samples=self.num_samples,
+                                       full_cov=False)
         var_exp = self.likelihood.variational_expectations(F_mean, F_var, Y) # Shape [S, N, D]
         return tf.reduce_mean(var_exp, 0)   # Shape [N, D]
 
