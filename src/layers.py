@@ -47,7 +47,7 @@ class Layer(Module):
             S, N, D = X.shape[:3]
             X_flat = tf.reshape(X, [S*N, D])
             mean, var = self.conditional_ND(X_flat)
-            num_outputs = mean.shape[-1] # TODO: Check if this is actually num_outputs
+            num_outputs = mean.shape[-1]
             return [tf.reshape(m, [S, N, num_outputs]) for m in [mean, var]]
 
     def sample_from_conditional(self, X, z=None, full_cov=False):
@@ -67,7 +67,7 @@ class Layer(Module):
         # set shapes
         S = tf.shape(X)[0]
         N = tf.shape(X)[1]
-        D = mean.shape[-1] # TODO: Check if this is actually num_outputs
+        D = mean.shape[-1]
         # D = self.num_outputs
 
         mean = tf.reshape(mean, (S, N, D))
@@ -223,13 +223,11 @@ class SVGPLayer(Layer):
             # matrix is product of diagonal entries and that 0.5*|Kuu| =
             # 0.5*|LL^T| = |L|.
             KL += tf.reduce_sum(tf.math.log(tf.linalg.diag_part(self.Lu))) * self.num_outputs
-            # TODO: Check if the result of the triangular solve is diagonal, otherwise this is confusing
             KL += 0.5 * tf.reduce_sum(tf.square(tf.linalg.triangular_solve(self.Lu_tiled, self.q_sqrt, lower=True)))
             # computes m^T Kuu^(-1) m, which is scalar or rather has shape
             # [num_outputs]. cholesky_solve expects the Cholesky decomposition
             # of the left side (i.e. as first argument), therefore Lu is used
             # instead of Kuu.
-            # TODO: Find out why elementwise multiplication is used for second part
             Kinv_m = tf.linalg.cholesky_solve(self.Lu, self.q_mu)
             KL += 0.5 * tf.reduce_sum(self.q_mu * Kinv_m)
         else:
