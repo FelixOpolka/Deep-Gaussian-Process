@@ -39,16 +39,16 @@ def make_dgp(num_layers, X, Y, Z):
     return model
 
 
-def training_step(model, X, Y, batch_size=1000):
-    n_batches = max(int(len(x_train) / batch_size), 1)
+def training_step(model, X, Y, optimizer, batch_size=1000):
+    n_batches = max(int(len(X) / batch_size), 1)
     elbos = []
     for x_batch, y_batch in zip(np.split(X, n_batches),
                                 np.split(Y, n_batches)):
         with tf.GradientTape(watch_accessed_variables=False) as tape:
-            tape.watch(dgp.trainable_variables)
+            tape.watch(model.trainable_variables)
             objective = -model.elbo((x_batch, y_batch))
-            gradients = tape.gradient(objective, dgp.trainable_variables)
-        optimizer.apply_gradients(zip(gradients, dgp.trainable_variables))
+            gradients = tape.gradient(objective, model.trainable_variables)
+        optimizer.apply_gradients(zip(gradients, model.trainable_variables))
         elbos.append(-objective.numpy())
     return np.mean(elbos)
 
@@ -66,7 +66,7 @@ def evaluation_step(model, X, Y, batch_size=1000, num_samples=100):
     return np.mean(likelihoods), np.mean(accs)
 
 
-if __name__ == '__main__':
+def run_training():
     x_train, y_train, x_test, y_test = load_data()
     num_inducing = 100
     Z = kmeans2(x_train, num_inducing, minit="points")[0]
@@ -78,7 +78,7 @@ if __name__ == '__main__':
 
     for epoch in range(1500):
         start_time = time.time()
-        elbo = training_step(dgp, x_train, y_train, batch_size)
+        elbo = training_step(dgp, x_train, y_train, optimizer, batch_size)
         if epoch % 20 == 0:
             likelihood, acc = evaluation_step(dgp, x_test, y_test, batch_size,
                                               num_samples)
@@ -86,3 +86,7 @@ if __name__ == '__main__':
             likelihood, acc = np.nan, np.nan
         duration = time.time() - start_time
         print(f"ELBO: {elbo}, Likelihood: {likelihood}, Acc: {acc} [{duration}]")
+
+
+if __name__ == '__main__':
+    run_training()
