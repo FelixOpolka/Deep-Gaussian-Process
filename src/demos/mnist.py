@@ -76,10 +76,13 @@ if __name__ == '__main__':
     dgp = make_dgp(2, x_train, y_train, Z)
     optimizer = tf.optimizers.Adam(learning_rate=0.01)
 
-    for _ in range(1500):
+    for epoch in range(1500):
         start_time = time.time()
         elbo = training_step(dgp, x_train, y_train, batch_size)
-        likelihood, acc = evaluation_step(dgp, x_test, y_test, batch_size,
-                                          num_samples)
+        if epoch % 20 == 0:
+            likelihood, acc = evaluation_step(dgp, x_test, y_test, batch_size,
+                                              num_samples)
+        else:
+            likelihood, acc = np.nan, np.nan
         duration = time.time() - start_time
         print(f"ELBO: {elbo}, Likelihood: {likelihood}, Acc: {acc} [{duration}]")

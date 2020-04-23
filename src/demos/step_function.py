@@ -29,7 +29,10 @@ def make_deep_GP(num_layers, X, Y, Z):
     for l in range(num_layers):
         kernel = RBF(lengthscale=0.2, variance=1.0) + White(variance=1e-5)
         kernels.append(kernel)
-        layer_sizes.append(1)
+        if l == num_layers-1 or l == 0:
+            layer_sizes.append(1)
+        else:
+            layer_sizes.append(2)
 
     dgp = DeepGP(X, Y, Z, kernels, layer_sizes, Gaussian(), num_samples=100)
 

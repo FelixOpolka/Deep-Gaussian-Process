@@ -10,11 +10,12 @@ from utils import BroadcastingLikelihood
 
 class DeepGPBase(Module):
 
-    def __init__(self, likelihood, layers, num_samples=1, **kwargs):
+    def __init__(self, likelihood, layers, num_data, num_samples=1, **kwargs):
         super().__init__(name="DeepGPBase")
         self.num_samples = num_samples
         self.likelihood = BroadcastingLikelihood(likelihood)
         self.layers = layers
+        self.num_data = num_data
 
     def propagate(self, X, full_cov=False, num_samples=1, zs=None):
         sX = tf.tile(tf.expand_dims(X, 0), [num_samples, 1, 1])
@@ -67,11 +68,11 @@ class DeepGPBase(Module):
         :return: Tensor representing ELBO.
         """
         X, Y = data
-        num_data = X.shape[0]
+        batch_size = X.shape[0]
         likelihood = tf.reduce_sum(self.expected_data_log_likelihood(X, Y))
         # scale loss term corresponding to minibatch size
-        scale = tf.cast(num_data, gpflow.default_float())
-        scale /= tf.cast(X.shape[0], gpflow.default_float())
+        scale = tf.cast(batch_size, gpflow.default_float())
+        scale /= tf.cast(self.num_data, gpflow.default_float())
         # Compute KL term
         KL = tf.reduce_sum([layer.KL() for layer in self.layers])
         # print(scale*likelihood, -KL)
@@ -100,4 +101,4 @@ class DeepGP(DeepGPBase):
                                     mean_function=mean_function,
                                     num_outputs=num_outputs,
                                     whiten=whiten)
-        super().__init__(likelihood, layers, num_samples)
+        super().__init__(likelihood, layers, X.shape[0], num_samples)

@@ -140,17 +140,12 @@ class SVGPLayer(Layer):
             Lu = np.linalg.cholesky(Ku + np.eye(Z.shape[0])*gpflow.default_jitter())
             self.q_sqrt = Parameter(np.tile(Lu[None, :, :], [num_outputs, 1, 1]), transform=triangular(), name="q_sqrt")
 
-        self.Ku, self.Lu, self.Ku_tiled, self.Lu_tiled = None, None, None, None
-        self.needs_build_cholesky = True
-
-    def build_cholesky_if_needed(self):
-        # # make sure we only compute this once
-        # if self.needs_build_cholesky:
-        self.Ku = covs.Kuu(self.feature, self.kern, jitter=gpflow.default_jitter())
-        self.Lu = tf.linalg.cholesky(self.Ku)
-        self.Ku_tiled = tf.tile(self.Ku[None, :, :], [self.num_outputs, 1, 1])
-        self.Lu_tiled = tf.tile(self.Lu[None, :, :], [self.num_outputs, 1, 1])
-        self.needs_build_cholesky = False
+    def get_cholesky(self):
+        Ku = covs.Kuu(self.feature, self.kern, jitter=gpflow.default_jitter())
+        Lu = tf.linalg.cholesky(Ku)
+        Ku_tiled = tf.tile(Ku[None, :, :], [self.num_outputs, 1, 1])
+        Lu_tiled = tf.tile(Lu[None, :, :], [self.num_outputs, 1, 1])
+        return Ku, Ku_tiled, Lu, Lu_tiled
 
     def conditional_ND(self, X, full_cov=False):
         """
@@ -160,14 +155,14 @@ class SVGPLayer(Layer):
         :param full_cov:
         :return:
         """
-        self.build_cholesky_if_needed()
+        _, Ku_tiled, Lu, _ = self.get_cholesky()
 
         Kuf = covs.Kuf(self.feature, self.kern, X)
 
         # Compute the alpha term
-        alpha = tf.linalg.triangular_solve(self.Lu, Kuf, lower=True)
+        alpha = tf.linalg.triangular_solve(Lu, Kuf, lower=True)
         if not self.white:
-            alpha = tf.linalg.triangular_solve(tf.transpose(self.Lu), alpha, lower=False)
+            alpha = tf.linalg.triangular_solve(tf.transpose(Lu), alpha, lower=False)
 
         f_mean = tf.matmul(alpha, self.q_mu, transpose_a=True)
         f_mean = f_mean + self.mean_function(X)
@@ -177,7 +172,7 @@ class SVGPLayer(Layer):
         if self.white:
             f_cov = -tf.eye(self.num_inducing, dtype=gpflow.default_float())[None, :, :]
         else:
-            f_cov = -self.Ku_tiled
+            f_cov = -Ku_tiled
 
         if self.q_sqrt is not None:
             S = tf.matmul(self.q_sqrt, self.q_sqrt, transpose_b=True) # Inducing points prior covariance
@@ -209,7 +204,7 @@ class SVGPLayer(Layer):
         multivariate normals, which in this case is:
         KL = 1/2 [log|Kuu| - log|S| - M + tr(Kuu^(-1)S) + m^T Kuu^(-1) m.
         """
-        self.build_cholesky_if_needed()
+        _, _, Lu, Lu_tiled = self.get_cholesky()
 
         # constant dimensionality term
         KL = -0.5 * self.num_outputs * self.num_inducing
@@ -222,13 +217,13 @@ class SVGPLayer(Layer):
             # log of determinant of Kuu. Uses that determinant of triangular
             # matrix is product of diagonal entries and that 0.5*|Kuu| =
             # 0.5*|LL^T| = |L|.
-            KL += tf.reduce_sum(tf.math.log(tf.linalg.diag_part(self.Lu))) * self.num_outputs
-            KL += 0.5 * tf.reduce_sum(tf.square(tf.linalg.triangular_solve(self.Lu_tiled, self.q_sqrt, lower=True)))
+            KL += tf.reduce_sum(tf.math.log(tf.linalg.diag_part(Lu))) * self.num_outputs
+            KL += 0.5 * tf.reduce_sum(tf.square(tf.linalg.triangular_solve(Lu_tiled, self.q_sqrt, lower=True)))
             # computes m^T Kuu^(-1) m, which is scalar or rather has shape
             # [num_outputs]. cholesky_solve expects the Cholesky decomposition
             # of the left side (i.e. as first argument), therefore Lu is used
             # instead of Kuu.
-            Kinv_m = tf.linalg.cholesky_solve(self.Lu, self.q_mu)
+            Kinv_m = tf.linalg.cholesky_solve(Lu, self.q_mu)
             KL += 0.5 * tf.reduce_sum(self.q_mu * Kinv_m)
         else:
             KL += 0.5 * tf.reduce_sum(tf.square(self.q_sqrt))
