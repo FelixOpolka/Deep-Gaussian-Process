@@ -27,7 +27,7 @@ def make_deep_GP(num_layers, X, Y, Z):
     kernels = []
     layer_sizes = []
     for l in range(num_layers):
-        kernel = RBF(lengthscale=0.2, variance=1.0) + White(variance=1e-5)
+        kernel = RBF(lengthscales=0.2, variance=1.0) + White(variance=1e-5)
         kernels.append(kernel)
         layer_sizes.append(1)
 

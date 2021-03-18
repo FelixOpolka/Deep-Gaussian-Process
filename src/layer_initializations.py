@@ -1,3 +1,4 @@
+import gpflow
 import numpy as np
 from gpflow.mean_functions import Identity, Linear, Zero
 
@@ -26,8 +27,8 @@ def init_layers_linear(X, Y, Z, kernels, layer_sizes, mean_function=Zero(),
                 W = np.concatenate([np.eye(dim_in),
                                     np.zeros((dim_in, dim_out - dim_in))], 1)
             mf = Linear(W)
-            mf.A.trainable = False
-            mf.b.trainable = False
+            gpflow.set_trainable(mf.A, False)
+            gpflow.set_trainable(mf.b, False)
 
         layers.append(Layer(kern_in, Z_running, dim_out, mf, white=whiten))
 

@@ -12,7 +12,7 @@ class BroadcastingLikelihood(Likelihood):
     """
 
     def __init__(self, likelihood):
-        super().__init__()
+        super().__init__(likelihood.latent_dim, likelihood.observation_dim)
         self.likelihood = likelihood
 
         if isinstance(likelihood, Gaussian):
@@ -34,37 +34,37 @@ class BroadcastingLikelihood(Likelihood):
             if isinstance(flattened_result, tuple):
                 return [tf.reshape(x, [S, N, -1]) for x in flattened_result]
             else:
-                return tf.reshape(flattened_result, [S, N, -1])
+                return tf.reshape(flattened_result, [S, N])
 
-    def variational_expectations(self, Fmu, Fvar, Y):
+    def _variational_expectations(self, Fmu, Fvar, Y):
         f = lambda vars_SND, vars_ND: self.likelihood.variational_expectations(vars_SND[0],
                                                                                vars_SND[1],
                                                                                vars_ND[0])
         return self._broadcast(f, [Fmu, Fvar], [Y])
 
-    def logp(self, F, Y):
-        f = lambda vars_SND, vars_ND: self.likelihood.logp(vars_SND[0],
-                                                           vars_ND[0])
+    def _log_prob(self, F, Y):
+        f = lambda vars_SND, vars_ND: self.likelihood.log_prob(vars_SND[0],
+                                                               vars_ND[0])
         return self._broadcast(f, [F], [Y])
 
-    def conditional_mean(self, F):
+    def _conditional_mean(self, F):
         f = lambda vars_SND, vars_ND: self.likelihood.conditional_mean(
             vars_SND[0])
         return self._broadcast(f, [F], [])
 
-    def conditional_variance(self, F):
+    def _conditional_variance(self, F):
         f = lambda vars_SND, vars_ND: self.likelihood.conditional_variance(
             vars_SND[0])
         return self._broadcast(f, [F], [])
 
-    def predict_mean_and_var(self, Fmu, Fvar):
+    def _predict_mean_and_var(self, Fmu, Fvar):
         f = lambda vars_SND, vars_ND: self.likelihood.predict_mean_and_var(
             vars_SND[0],
             vars_SND[1])
         return self._broadcast(f, [Fmu, Fvar], [])
 
-    def predict_density(self, Fmu, Fvar, Y):
-        f = lambda vars_SND, vars_ND: self.likelihood.predict_density(
+    def _predict_log_density(self, Fmu, Fvar, Y):
+        f = lambda vars_SND, vars_ND: self.likelihood.predict_log_density(
             vars_SND[0],
             vars_SND[1],
             vars_ND[0])
