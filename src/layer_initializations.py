@@ -1,3 +1,4 @@
+import gpflow
 import numpy as np
 from gpflow import set_trainable
 from gpflow.mean_functions import Identity, Linear, Zero

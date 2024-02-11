@@ -35,7 +35,7 @@ class BroadcastingLikelihood(Likelihood):
             if isinstance(flattened_result, tuple):
                 return [tf.reshape(x, [S, N, -1]) for x in flattened_result]
             else:
-                return tf.reshape(flattened_result, [S, N, -1])
+                return tf.reshape(flattened_result, [S, N])
 
     def _variational_expectations(
         self, X: TensorType, Fmu: TensorType, Fvar: TensorType, Y: TensorType

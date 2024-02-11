@@ -25,10 +25,10 @@ def load_data():
 
 
 def make_dgp(num_layers, X, Y, Z):
-    kernels = [RBF(variance=2.0, lengthscale=2.0)]
+    kernels = [RBF(variance=2.0, lengthscales=2.0)]
     layer_sizes = [784]
     for l in range(num_layers-1):
-        kernels.append(RBF(variance=2.0, lengthscale=2.0))
+        kernels.append(RBF(variance=2.0, lengthscales=2.0))
         layer_sizes.append(30)
     model = DeepGP(X, Y, Z, kernels, layer_sizes, MultiClass(10),
                    num_outputs=10)
