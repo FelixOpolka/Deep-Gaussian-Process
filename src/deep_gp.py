@@ -71,8 +71,8 @@ class DeepGPBase(Module):
         batch_size = X.shape[0]
         likelihood = tf.reduce_sum(self.expected_data_log_likelihood(X, Y))
         # scale loss term corresponding to minibatch size
-        scale = tf.cast(batch_size, gpflow.default_float())
-        scale /= tf.cast(self.num_data, gpflow.default_float())
+        scale = tf.cast(self.num_data, gpflow.default_float())
+        scale /= tf.cast(batch_size, gpflow.default_float())
         # Compute KL term
         KL = tf.reduce_sum([layer.KL() for layer in self.layers])
         # print(scale*likelihood, -KL)
