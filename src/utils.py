@@ -1,5 +1,6 @@
 import gpflow
 import tensorflow as tf
+from gpflow.base import TensorType, MeanAndVariance
 from gpflow.likelihoods import Likelihood, Gaussian
 
 
@@ -12,7 +13,7 @@ class BroadcastingLikelihood(Likelihood):
     """
 
     def __init__(self, likelihood):
-        super().__init__()
+        super().__init__(likelihood.input_dim, likelihood.latent_dim, likelihood.observation_dim)
         self.likelihood = likelihood
 
         if isinstance(likelihood, Gaussian):
@@ -36,38 +37,35 @@ class BroadcastingLikelihood(Likelihood):
             else:
                 return tf.reshape(flattened_result, [S, N, -1])
 
-    def variational_expectations(self, Fmu, Fvar, Y):
-        f = lambda vars_SND, vars_ND: self.likelihood.variational_expectations(vars_SND[0],
-                                                                               vars_SND[1],
-                                                                               vars_ND[0])
+    def _variational_expectations(
+        self, X: TensorType, Fmu: TensorType, Fvar: TensorType, Y: TensorType
+    ) -> tf.Tensor:
+        f = lambda vars_SND, vars_ND: self.likelihood.variational_expectations(
+            X, vars_SND[0], vars_SND[1], vars_ND[0])
         return self._broadcast(f, [Fmu, Fvar], [Y])
 
-    def logp(self, F, Y):
-        f = lambda vars_SND, vars_ND: self.likelihood.logp(vars_SND[0],
-                                                           vars_ND[0])
+    def _log_prob(self, X: TensorType, F: TensorType, Y: TensorType) -> tf.Tensor:
+        f = lambda vars_SND, vars_ND: self.likelihood.logp(X, vars_SND[0], vars_ND[0])
         return self._broadcast(f, [F], [Y])
 
-    def conditional_mean(self, F):
-        f = lambda vars_SND, vars_ND: self.likelihood.conditional_mean(
-            vars_SND[0])
+    def _conditional_mean(self, X: TensorType, F: TensorType) -> tf.Tensor:
+        f = lambda vars_SND, vars_ND: self.likelihood.conditional_mean(X, vars_SND[0])
         return self._broadcast(f, [F], [])
 
-    def conditional_variance(self, F):
-        f = lambda vars_SND, vars_ND: self.likelihood.conditional_variance(
-            vars_SND[0])
+    def _conditional_variance(self, X: TensorType, F: TensorType) -> tf.Tensor:
+        f = lambda vars_SND, vars_ND: self.likelihood.conditional_variance(X, vars_SND[0])
         return self._broadcast(f, [F], [])
 
-    def predict_mean_and_var(self, Fmu, Fvar):
-        f = lambda vars_SND, vars_ND: self.likelihood.predict_mean_and_var(
-            vars_SND[0],
-            vars_SND[1])
+    def _predict_mean_and_var(
+        self, X: TensorType, Fmu: TensorType, Fvar: TensorType
+    ) -> MeanAndVariance:
+        f = lambda vars_SND, vars_ND: self.likelihood.predict_mean_and_var(X, vars_SND[0], vars_SND[1])
         return self._broadcast(f, [Fmu, Fvar], [])
 
-    def predict_density(self, Fmu, Fvar, Y):
-        f = lambda vars_SND, vars_ND: self.likelihood.predict_density(
-            vars_SND[0],
-            vars_SND[1],
-            vars_ND[0])
+    def _predict_log_density(
+        self, X: TensorType, Fmu: TensorType, Fvar: TensorType, Y: TensorType
+    ) -> tf.Tensor:
+        f = lambda vars_SND, vars_ND: self.likelihood.predict_density(X, vars_SND[0], vars_SND[1], vars_ND[0])
         return self._broadcast(f, [Fmu, Fvar], [Y])
 
 

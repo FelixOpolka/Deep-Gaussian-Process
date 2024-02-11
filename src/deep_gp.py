@@ -42,12 +42,12 @@ class DeepGPBase(Module):
     def predict_y(self, predict_at, num_samples):
         Fmean, Fvar = self.predict_f(predict_at, num_samples=num_samples,
                                      full_cov=False)
-        return self.likelihood.predict_mean_and_var(Fmean, Fvar)
+        return self.likelihood.predict_mean_and_var(predict_at, Fmean, Fvar)
 
     def predict_log_density(self, data, num_samples):
         Fmean, Fvar = self.predict_f(data[0], num_samples=num_samples,
                                      full_cov=False)
-        l = self.likelihood.predict_density(Fmean, Fvar, data[1])
+        l = self.likelihood.predict_log_density(data[0], Fmean, Fvar, data[1])
         log_num_samples = tf.math.log(tf.cast(self.num_samples, gpflow.base.default_float()))
         return tf.reduce_logsumexp(l - log_num_samples, axis=0)
 
@@ -58,7 +58,7 @@ class DeepGPBase(Module):
         """
         F_mean, F_var = self.predict_f(X, num_samples=self.num_samples,
                                        full_cov=False)
-        var_exp = self.likelihood.variational_expectations(F_mean, F_var, Y) # Shape [S, N, D]
+        var_exp = self.likelihood.variational_expectations(X, F_mean, F_var, Y) # Shape [S, N, D]
         return tf.reduce_mean(var_exp, 0)   # Shape [N, D]
 
     def elbo(self, data):
