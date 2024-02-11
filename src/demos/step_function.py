@@ -27,7 +27,7 @@ def make_deep_GP(num_layers, X, Y, Z):
     kernels = []
     layer_sizes = []
     for l in range(num_layers):
-        kernel = RBF(lengthscale=0.2, variance=1.0) + White(variance=1e-5)
+        kernel = RBF(lengthscales=0.2, variance=np.std(Y.reshape(-1))) + White(variance=1e-5)
         kernels.append(kernel)
         if l == num_layers-1 or l == 0:
             layer_sizes.append(1)
@@ -47,13 +47,13 @@ if __name__ == '__main__':
     dgp = make_deep_GP(3, X_train, Y_train, Z)
     optimizer = tf.optimizers.Adam(learning_rate=0.01, epsilon=1e-08)
 
-    for _ in range(1500):
+    for idx in range(1500):
         with tf.GradientTape(watch_accessed_variables=False) as tape:
             tape.watch(dgp.trainable_variables)
             objective = -dgp.elbo((X_train, Y_train))
             gradients = tape.gradient(objective, dgp.trainable_variables)
         optimizer.apply_gradients(zip(gradients, dgp.trainable_variables))
-        print(f"ELBO: {-objective.numpy()}")
+        print(f"{idx}\tELBO: {-objective.numpy()}")
 
     samples, _, _ = dgp.predict_all_layers(Xs, num_samples=50, full_cov=True)
     plt.plot(Xs, samples[-1].numpy()[:, :, 0].T, color='r', alpha=0.3)
